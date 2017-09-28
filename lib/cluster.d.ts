@@ -19,5 +19,5 @@ export declare class Cluster extends Messenger {
         initialize: boolean;
     }): Promise<void>;
     log(level: any, message: any, object?: any): void;
-    start(init?: any, options?: any): Promise<any>;
+    start(init?: (cluster: this) => Promise<any>, options?: any): Promise<any>;
 }
