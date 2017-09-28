@@ -11,16 +11,22 @@ import { exit } from 'process'
     options : mixinRules.protoValue
 })
 export class Cluster extends Messenger {
-    _buckets : { [ name : string ] : Bucket }
+    _buckets : { [ name : string ] : typeof Bucket }
 
     static onDefine({ buckets, ...spec }, BaseClass ){
         this.prototype._buckets = buckets;
         Messenger.onDefine.call( this, spec );
     }
 
+    static _instance : Cluster
+
+    static get instance() : Cluster {
+        return this._instance || ( this._instance = new (this as any)() );
+    }
+
     constructor(){
         super();
-        tools.assign( this, this._buckets );
+        tools.transform( this as any, this._buckets, Ctor => Ctor.instance );
     }
 
     api : any

@@ -3,12 +3,14 @@ import * as couchbase from 'couchbase';
 import { Bucket } from './bucket';
 export declare class Cluster extends Messenger {
     _buckets: {
-        [name: string]: Bucket;
+        [name: string]: typeof Bucket;
     };
     static onDefine({buckets, ...spec}: {
         [x: string]: any;
         buckets: any;
     }, BaseClass: any): void;
+    static _instance: Cluster;
+    static readonly instance: Cluster;
     constructor();
     api: any;
     connection: string;
