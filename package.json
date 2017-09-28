@@ -1,0 +1,35 @@
+{
+  "name": "couch-r",
+  "version": "0.1.0",
+  "description": "Couchbase ODM for NodeJS and TypeScript",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "build" : "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Volicon/couch-r.git"
+  },
+  "keywords": [
+    "couchbase",
+    "odm",
+    "type-r",
+    "typescript"
+  ],
+  "author": "Vlad Balin, Ivan Terpugov, Alex Repin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Volicon/couch-r/issues"
+  },
+  "homepage": "https://github.com/Volicon/couch-r#readme",
+  "devDependencies": {
+    "@types/couchbase": "^2.1.30",
+    "typescript": "^2.5.3"
+  },
+  "dependencies": {
+    "couchbase": "^2.4.0",
+    "type-r": "^1.1.0-a12"
+  }
+}
