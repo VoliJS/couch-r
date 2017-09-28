@@ -65,7 +65,7 @@ export class Cluster extends Messenger {
         tools.log( level, `[Couch-R] Cluster: ${ message }`, object);
     }
 
-    async start( init?, options? ){
+    async start( init? : ( cluster : this ) => Promise<any>, options? ){
         return this
             .connect( options )
             .then( () => {
