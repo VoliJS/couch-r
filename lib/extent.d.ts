@@ -9,6 +9,8 @@ export interface ExtentDefinition extends MessengerDefinition {
 }
 export declare abstract class DocumentExtent extends Messenger {
     static onDefine({queries, ...spec}: ExtentDefinition, BaseClass: any): void;
+    static _instance: DocumentExtent;
+    static readonly instance: DocumentExtent;
     queries: {
         [name: string]: Query;
     };

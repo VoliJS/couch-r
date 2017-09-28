@@ -17,7 +17,14 @@ export interface ExtentDefinition extends MessengerDefinition {
 export abstract class DocumentExtent extends Messenger {
     static onDefine({ queries, ...spec } : ExtentDefinition, BaseClass ){
         this.prototype.queries = queries;
+        this._instance = null;
         Messenger.onDefine.call( this, spec, BaseClass );
+    }
+
+    static _instance : DocumentExtent
+
+    static get instance() : DocumentExtent {
+        return this._instance || ( this._instance = new ( this as any )() );
     }
 
     queries : {

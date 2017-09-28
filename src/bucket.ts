@@ -6,7 +6,7 @@ import { DocumentExtent, ExtentDefinition } from './extent'
 import { DocumentsCollection } from './collection'
 
 export interface BucketDefinition extends ExtentDefinition {
-    collections? : { [ name : string ] : DocumentsCollection<any> }
+    collections? : { [ name : string ] : typeof DocumentsCollection }
 }
 
 @define
@@ -31,7 +31,7 @@ export class Bucket extends DocumentExtent {
     cluster : any = null
     api : any = null
 
-    _collections : DocumentsCollection<any>[]
+    _collections : DocumentsCollection[]
 
     static onDefine({ collections, ...spec } : BucketDefinition ){
         const { prototype } = this;
@@ -100,8 +100,8 @@ export class Bucket extends DocumentExtent {
     }
 }
 
-function processSpec< T >( self : Bucket, objects : { [ name : string ] : T } ) : T[] {
+function processSpec( self : Bucket, objects : { [ name : string ] : typeof DocumentsCollection } ) : DocumentsCollection[] {
     return objects ? Object.keys( objects ).map( name => (
-        self[ name ] = objects[ name ]
+        self[ name ] = objects[ name ].instance
     ) ) : [];
 }

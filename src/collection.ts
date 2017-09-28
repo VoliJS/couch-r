@@ -11,11 +11,13 @@ const couchbaseErrors = require('couchbase/lib/errors');
     Document : mixinRules.protoValue,
     key : mixinRules.protoValue
 })
-export class DocumentsCollection<D extends Document> extends DocumentExtent {
+export class DocumentsCollection<D extends Document = Document> extends DocumentExtent {
     static Document : typeof Document
     Document : typeof Document
 
     static key : DocumentId<Document>
+
+    static instance : DocumentsCollection<Document>
 
     key : DocumentKey<D>
 

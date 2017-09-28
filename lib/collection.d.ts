@@ -2,10 +2,11 @@ import { Document } from './common';
 import { QueryParts } from './queries';
 import { DocumentKey, DocumentId } from './key';
 import { DocumentExtent } from './extent';
-export declare class DocumentsCollection<D extends Document> extends DocumentExtent {
+export declare class DocumentsCollection<D extends Document = Document> extends DocumentExtent {
     static Document: typeof Document;
     Document: typeof Document;
     static key: DocumentId<Document>;
+    static instance: DocumentsCollection<Document>;
     key: DocumentKey<D>;
     readonly asProp: (proto: object, name: string) => void;
     readonly id: string;
