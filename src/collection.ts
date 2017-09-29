@@ -98,7 +98,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
      * get({ props }) when !idCounter - read document by composite key
      * get( document ) - fetch the document
      */
-    async _get( id : Partial<D> | string, method : ( key : string ) => Promise< any > )  /* this.Document */ {
+    async _get( id : Partial<D> | string | number, method : ( key : string ) => Promise< any > )  /* this.Document */ {
         if( !id ) return null;
 
         const doc = id instanceof this.Document ? id : null;
@@ -121,11 +121,11 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         }
     }
 
-    async get( id, options = {} ){
+    async get( id : Partial<D> | string, options = {} ){
         return this._get( id, key => this.api.get( key, options ) ) as Promise<D>;
     }
 
-    async getAndLock( id, options = {} ){
+    async getAndLock( id : Partial<D> | string, options = {} ){
         return this._get( id, key => this.api.getAndLock( key, options ) );
     }
 

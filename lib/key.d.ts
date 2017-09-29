@@ -28,7 +28,7 @@ export declare class DocumentKey<D extends Document> implements DocumentId<D> {
      * get( existingDocument )
      * get( newDocument )
      */
-    get(doc: string | Partial<D> | string[], ignoreErrors?: true): string;
+    get(doc: string | number | Partial<D> | string[], ignoreErrors?: true): string;
     toShort(fullId: string): string;
     fromShort(a_shortId: string | number): string;
 }

@@ -25,9 +25,9 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
      * get({ props }) when !idCounter - read document by composite key
      * get( document ) - fetch the document
      */
-    _get(id: Partial<D> | string, method: (key: string) => Promise<any>): Promise<Document>;
-    get(id: any, options?: {}): Promise<D>;
-    getAndLock(id: any, options?: {}): Promise<Document>;
+    _get(id: Partial<D> | string | number, method: (key: string) => Promise<any>): Promise<Document>;
+    get(id: Partial<D> | string, options?: {}): Promise<D>;
+    getAndLock(id: Partial<D> | string, options?: {}): Promise<Document>;
     /**
      * unlock( document ) - unlock the previously locked document.
      */

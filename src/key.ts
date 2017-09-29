@@ -86,11 +86,11 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
      * get( existingDocument )
      * get( newDocument )
      */
-    get( doc : string | Partial<D> | string[], ignoreErrors? : true ){
+    get( doc : string | number | Partial<D> | string[], ignoreErrors? : true ) : string {
         const { type } = this;
 
         // Convert to full id.
-        if( typeof doc === 'string' ) return this.fromShort( doc );
+        if( typeof doc !== 'object' ) return this.fromShort( String( doc ) );
         if( doc instanceof Array ) return this.fromShort( doc.join( idSeparator ) )
 
         // Return existing id, if it's present.
