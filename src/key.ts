@@ -75,7 +75,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
 
         const counter = await this.getCounterValue( doc, takeNext );
 
-        return counter ? key + idSeparator + counter : key;
+        return counter ? key + ( this.code ? idSeparator : '' ) + counter : key;
     }
 
     /**
@@ -101,7 +101,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
             throw new Error( "Can't create full id for document with counter." );
         }
 
-        return this.fromShort( this.code( doc ).join( idSeparator ) );
+        return this.fromShort( this.code ? this.code( doc ).join( idSeparator ) : '' );
     }
 
     toShort( fullId : string ) : string {

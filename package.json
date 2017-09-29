@@ -1,6 +1,6 @@
 {
   "name": "couch-r",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Couchbase ODM for NodeJS and TypeScript",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
