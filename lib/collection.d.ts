@@ -8,7 +8,7 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
     static key: DocumentId<Document>;
     static instance: DocumentsCollection<Document>;
     key: DocumentKey<D>;
-    readonly asProp: (proto: object, name: string) => void;
+    static readonly asProp: (proto: object, name: string) => void;
     readonly id: string;
     getDesignDocKey(): string;
     bucket: any;

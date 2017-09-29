@@ -21,7 +21,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
 
     key : DocumentKey<D>
 
-    get asProp(){
+    static get asProp(){
         return definitionDecorator( 'collections', this );
     }
 

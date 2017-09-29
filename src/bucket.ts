@@ -39,7 +39,7 @@ export class Bucket extends DocumentExtent {
         DocumentExtent.onDefine.call( this, spec );
     }
 
-    get asProp(){
+    static get asProp(){
         return definitionDecorator( 'buckets', this );
     }
 

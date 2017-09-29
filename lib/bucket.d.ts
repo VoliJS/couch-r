@@ -15,7 +15,7 @@ export declare class Bucket extends DocumentExtent {
     api: any;
     _collections: DocumentsCollection[];
     static onDefine({collections, ...spec}: BucketDefinition): void;
-    readonly asProp: (proto: object, name: string) => void;
+    static readonly asProp: (proto: object, name: string) => void;
     private _manager;
     readonly manager: any;
     _from(queryParts: QueryParts): void;
