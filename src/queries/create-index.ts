@@ -50,6 +50,9 @@ export class CreateIndexQuery extends Query {
 
         if( parts.where.length ) query += `WHERE ${ parts.where.join( ' AND ' ) }\n`;
 
+        // Always defer the build.
+        query += 'WITH { "defer_build" : true };'
+
         return query;
     }
 }

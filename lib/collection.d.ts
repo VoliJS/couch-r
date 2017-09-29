@@ -15,7 +15,7 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
     constructor();
     _from(queryParts: QueryParts): void;
     _where(parts: QueryParts): string;
-    connect(bucket: any, existingIndexes: any): Promise<void>;
+    connect(bucket: any, existingIndexes: any): Promise<string[]>;
     protected log(level: any, text: any): void;
     readonly idAttribute: string;
     readonly api: any;

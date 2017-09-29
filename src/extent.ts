@@ -54,7 +54,7 @@ export abstract class DocumentExtent extends Messenger {
 
     abstract getDesignDocKey( viewName : string )
 
-    async onConnect( exitsingIndexes ){
+    async onConnect( existingIndexes ){
         for( let name in this.queries ){
             // Connect query to the extent.
             const query = this.queries[ name ] = this.queries[ name ].bind( this, name );
@@ -63,12 +63,12 @@ export abstract class DocumentExtent extends Messenger {
             this[ name ] = query.create();
         }
 
-        if( exitsingIndexes ){
+        if( existingIndexes ){
             // Initialize design documents...
             await this.initViews();
 
             // Initialize indexes...
-            await this.initIndexes( exitsingIndexes );
+            return await this.initIndexes( existingIndexes );
         }
     }
 
@@ -87,8 +87,9 @@ export abstract class DocumentExtent extends Messenger {
         );
     }
 
-    private async initIndexes( existingIndexes ){
-        
+    private async initIndexes( existingIndexes ) : Promise<string[]> {
+        const toBuild : string[] = [];
+
         for( let name of this._indexes ){
             let existing = existingIndexes[ name ];
             const local : any = this.queries[ name ];
@@ -101,9 +102,12 @@ export abstract class DocumentExtent extends Messenger {
             
             if( !existing ){
                 this.log( 'info', `creating index ${name}...`);
-                await this.query( this[ name ] );
+                await this.query( this[ name ].consistency( 3 ) );
+                toBuild.push( name );
             }
         }
+
+        return toBuild;
     }
 }
 

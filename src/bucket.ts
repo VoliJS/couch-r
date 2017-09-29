@@ -77,10 +77,24 @@ export class Bucket extends DocumentExtent {
             this.log( 'debug', 'existing indexes:', indexes );
         }
 
-        await super.onConnect( indexes );
+        let toBuild = await super.onConnect( indexes );
 
         this.log( 'info', 'connect document collections...');
-        await Promise.all( this._collections.map( collection => collection.connect( this, indexes ) ) );
+
+        for( let collection of this._collections ){
+            const cIndexes = await collection.connect( this, indexes );
+            if( cIndexes ){
+                toBuild = toBuild.concat( cIndexes );
+            }
+        }
+
+        this.log( 'info', 'Build indexes...' );
+
+        const buildIndexes = couchbase.N1qlQuery.fromString( `
+            BUILD INDEX ON ${this.id}(${ toBuild.join( ',' )}) USING GSI;
+        `);
+
+        this.query( buildIndexes.consistency( 3 ) );
     }
 
     private async _getIndexes(){

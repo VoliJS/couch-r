@@ -22,7 +22,7 @@ export declare abstract class DocumentExtent extends Messenger {
     _indexes: string[];
     appendIndex(index: any, name: any): void;
     abstract getDesignDocKey(viewName: string): any;
-    onConnect(exitsingIndexes: any): Promise<void>;
+    onConnect(existingIndexes: any): Promise<string[]>;
     abstract api: any;
     query(theQuery: CouchbaseQuery, options?: {}): any;
     protected abstract log(level: any, message: any): any;

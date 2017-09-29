@@ -74,7 +74,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         this.bucket = bucket;
 
         this.log( 'info', 'initializing...' );
-        await super.onConnect( existingIndexes );
+        return await super.onConnect( existingIndexes );
     }
 
     protected log( level, text ){
