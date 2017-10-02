@@ -6,6 +6,7 @@ const typeSeparator = '#',
 
 export type KeyCode<D> = ( doc : Partial<D> ) => string[]
 export type KeyCounter<D> = ( doc : Partial<D> ) => string | string[]
+export type DocumentKeySource<D> = Partial<D> | string | number | Array<string | number>
 
 export interface DocumentId<D>{
     type : string
@@ -86,12 +87,12 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
      * get( existingDocument )
      * get( newDocument )
      */
-    get( doc : string | number | Partial<D> | string[], ignoreErrors? : true ) : string {
+    get( doc : DocumentKeySource<D>, ignoreErrors? : true ) : string {
         const { type } = this;
 
         // Convert to full id.
-        if( typeof doc !== 'object' ) return this.fromShort( String( doc ) );
         if( doc instanceof Array ) return this.fromShort( doc.join( idSeparator ) )
+        if( typeof doc !== 'object' ) return this.fromShort( String( doc ) );
 
         // Return existing id, if it's present.
         const id = doc[ this.collection.idAttribute ];

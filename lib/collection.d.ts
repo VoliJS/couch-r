@@ -1,6 +1,6 @@
 import { Document } from './common';
 import { QueryParts } from './queries';
-import { DocumentKey, DocumentId } from './key';
+import { DocumentKey, DocumentId, DocumentKeySource } from './key';
 import { DocumentExtent } from './extent';
 export declare class DocumentsCollection<D extends Document = Document> extends DocumentExtent {
     static Document: typeof Document;
@@ -25,14 +25,14 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
      * get({ props }) when !idCounter - read document by composite key
      * get( document ) - fetch the document
      */
-    _get(id: Partial<D> | string | number, method: (key: string) => Promise<any>): Promise<Document>;
-    get(id: Partial<D> | string, options?: {}): Promise<D>;
-    getAndLock(id: Partial<D> | string, options?: {}): Promise<Document>;
+    _get(id: DocumentKeySource<D>, method: (key: string) => Promise<any>): Promise<Document>;
+    get(id: DocumentKeySource<D>, options?: {}): Promise<D>;
+    getAndLock(id: DocumentKeySource<D>, options?: {}): Promise<Document>;
     /**
      * unlock( document ) - unlock the previously locked document.
      */
     unlock(doc: any, options?: {}): Promise<any>;
-    getAndTouch(id: any, expiry: any, options?: {}): Promise<Document>;
+    getAndTouch(id: DocumentKeySource<D>, expiry: any, options?: {}): Promise<Document>;
     /**
      * touch( doc, exp ) - touches the document.
      * touch( doc.id, exp ) - touches the document by its it.

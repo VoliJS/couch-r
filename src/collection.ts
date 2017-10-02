@@ -1,7 +1,7 @@
 import { tools, define, definitions, definitionDecorator, mixinRules, Messenger } from 'type-r'
 import { base64, Document } from './common'
 import { Query, SelectQuery, QueryParts } from './queries'
-import { DocumentKey, DocumentId } from './key'
+import { DocumentKey, DocumentId, DocumentKeySource } from './key'
 import { DocumentExtent } from './extent'
 const couchbaseErrors = require('couchbase/lib/errors');
 
@@ -98,7 +98,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
      * get({ props }) when !idCounter - read document by composite key
      * get( document ) - fetch the document
      */
-    async _get( id : Partial<D> | string | number, method : ( key : string ) => Promise< any > )  /* this.Document */ {
+    async _get( id : DocumentKeySource<D>, method : ( key : string ) => Promise< any > )  /* this.Document */ {
         if( !id ) return null;
 
         const doc = id instanceof this.Document ? id : null;
@@ -121,11 +121,11 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         }
     }
 
-    async get( id : Partial<D> | string, options = {} ){
+    async get( id : DocumentKeySource<D>, options = {} ){
         return this._get( id, key => this.api.get( key, options ) ) as Promise<D>;
     }
 
-    async getAndLock( id : Partial<D> | string, options = {} ){
+    async getAndLock( id : DocumentKeySource<D>, options = {} ){
         return this._get( id, key => this.api.getAndLock( key, options ) );
     }
 
@@ -136,7 +136,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         return this.api.unlock( this.key.get( doc ), doc.cas );
     }
 
-    async getAndTouch( id, expiry, options = {} ){
+    async getAndTouch( id : DocumentKeySource<D>, expiry, options = {} ){
         return this._get( id, key => this.api.getAndTouch( key, expiry, options ) );
     }
 
@@ -176,9 +176,10 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         delete ( json as any ).cas;
         delete json[ this.idAttribute ];
 
-        await this.api[ method ]( key, json, cas ? { cas, ...options } : options );
+        let result = await this.api[ method ]( key, json, cas ? { cas, ...options } : options );
 
-        // Update document id.
+        // Update document cas and id
+        doc.cas = result.cas;
         doc.id = this.key.toShort( key );
 
         this.trigger( 'write', doc, key, this );

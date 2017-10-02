@@ -1,6 +1,7 @@
 import { Document } from './common';
 export declare type KeyCode<D> = (doc: Partial<D>) => string[];
 export declare type KeyCounter<D> = (doc: Partial<D>) => string | string[];
+export declare type DocumentKeySource<D> = Partial<D> | string | number | Array<string | number>;
 export interface DocumentId<D> {
     type: string;
     code?: KeyCode<D>;
@@ -28,7 +29,7 @@ export declare class DocumentKey<D extends Document> implements DocumentId<D> {
      * get( existingDocument )
      * get( newDocument )
      */
-    get(doc: string | number | Partial<D> | string[], ignoreErrors?: true): string;
+    get(doc: DocumentKeySource<D>, ignoreErrors?: true): string;
     toShort(fullId: string): string;
     fromShort(a_shortId: string | number): string;
 }
