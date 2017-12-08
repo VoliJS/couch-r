@@ -14,6 +14,7 @@ export declare class DocumentKey<D extends Document> implements DocumentId<D> {
     counter: boolean | KeyCounter<D>;
     constructor({type, code, counter}: DocumentId<D>, collection: any);
     defaultCounter(doc: Partial<D>): string;
+    parse(fullId: string): string[];
     getCounterId(doc: Partial<D>): string;
     /**
      * counterValue( doc, code ) - take the next counter value

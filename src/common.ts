@@ -1,6 +1,6 @@
 const { promisify } = require( 'util' );
 
-import { define, attr, Record, Messenger } from 'type-r'
+import { define, attr, Record, Messenger, value } from 'type-r'
 
 export function promisifyAll( obj : object, ...names : string[] ){
     for( let name of names ){
@@ -13,8 +13,15 @@ export function promisifyAll( obj : object, ...names : string[] ){
  */
 @define
 export class Document extends Record {
-    @attr( String.value( void 0 ) )
-    cas : string
+    @attr( value( void 0 ) )
+    _cas : any
+
+    /**
+     * Type is written by collection and never used there.
+     * Currently it's only reasonable usage is in mapReduce views
+     */
+    @attr( String )
+    _type : string
 
     static id : any = String.value( null );
 }

@@ -32,6 +32,12 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
         return this.get( doc, true );
     }
 
+    // Parse full id to the array of strings.
+    parse( fullId : string ) : string[] {
+        const byType = fullId.split( typeSeparator );
+        return byType[ byType.length - 1 ].split( idSeparator );
+    }
+
     getCounterId( doc : Partial<D> ) : string {
         // All counter ids starts with typeSeparator. #...
         if ( typeof this.counter === 'function' ) {

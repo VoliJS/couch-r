@@ -1,11 +1,11 @@
 {
   "name": "couch-r",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Couchbase ODM for NodeJS and TypeScript",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "scripts": {
-    "build" : "tsc",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,10 +29,7 @@
     "typescript": "^2.5.3"
   },
   "dependencies": {
-    "couchbase": "^2.4.0",
-    "koa": "^2.3.0",
-    "koa-body": "^2.4.0",
-    "koa-router": "^7.2.1",
+    "couchbase": "^2.4.3",
     "type-r": "^1.1.0-a12"
   }
 }

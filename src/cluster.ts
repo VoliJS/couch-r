@@ -8,6 +8,7 @@ import { exit } from 'process'
 @definitions({
     buckets : mixinRules.merge,
     connection : mixinRules.protoValue,
+    authenticate : mixinRules.protoValue,
     options : mixinRules.protoValue
 })
 export class Cluster extends Messenger {
@@ -34,9 +35,15 @@ export class Cluster extends Messenger {
     connection : string
     options : couchbase.ClusterConstructorOptions
 
+    authenticate : { username : string, password : string }
+
     async connect( options = { initialize : false } ){
         // Create cluster...
         this.api = new couchbase.Cluster( this.connection );
+
+        const { username, password } = this.authenticate;
+        
+        this.api.authenticate( username, password );
         
         // Wrap API to promises...
         promisifyAll( this.api, 'query' );

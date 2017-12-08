@@ -1,6 +1,6 @@
 import { promisifyAll } from './common'
-import { Query, QueryParts } from './queries'
-import * as couchbase from 'couchbase'
+import { Query, QueryParts, index } from './queries'
+import { N1qlQuery } from 'couchbase'
 import { define, definitions, definitionDecorator, tools, mixinRules, MessengerDefinition, Messenger } from 'type-r'
 import { DocumentExtent, ExtentDefinition } from './extent'
 import { DocumentsCollection } from './collection'
@@ -43,6 +43,9 @@ export class Bucket extends DocumentExtent {
         return definitionDecorator( 'buckets', this );
     }
 
+    @index( '_type' ).asProp
+    ix_collection_type : N1qlQuery
+
     private _manager : any
     get manager(){
         if( !this._manager ){
@@ -61,47 +64,51 @@ export class Bucket extends DocumentExtent {
         this.cluster = cluster;
 
         this.log( 'info', `connecting...` );
-        this.api = await this.cluster.api.openBucket( this.id, this.password );
+        this.api = await this.cluster.api.openBucket( this.id );
 
         // Promisify bucket api...
         promisifyAll( this.api, 'append', 'counter', 'get', 'getAndLock',
-            'getAndTouch', 'getMulti', 'getReplica', 'insert', 'prepend', 'query', 'upsert', 'remove', 'replace' );
+            'getAndTouch', 'getMulti', 'getReplica', 'insert', 'prepend', 'query', 'upsert', 'remove', 'replace', 'unlock' );
 
-        let indexes;
+        await super.onConnect( initialize );
 
         if( initialize ){
             this.log( 'info', 'initialize primary index...');
-            await this.manager.createPrimaryIndex({ ignoreIfExists : true });
-
-            indexes = await this._getIndexes();
-            this.log( 'debug', 'existing indexes:', indexes );
+            await this.manager.createPrimaryIndex( {name: 'ix_primary', ignoreIfExists: true},  );
         }
 
-        let toBuild = ( await super.onConnect( indexes ) ) || [];
+        let indexes, toBuild;
+        if ( initialize ) {
+            indexes = await this._getIndexes();
+            this.log( 'info', 'existing indexes:', indexes );
+
+            toBuild = await this.updateIndexes(indexes)
+        } else {
+            toBuild = []
+        }
 
         this.log( 'info', 'connect document collections...');
 
         for( let collection of this._collections ){
-            const cIndexes = await collection.connect( this, indexes );
-            if( cIndexes ){
+            await collection.connect( this, initialize );
+            if ( initialize ) {
+                const cIndexes : string[] = await collection.updateIndexes(indexes);
                 toBuild = toBuild.concat( cIndexes );
             }
         }
 
         if( toBuild.length ){
-            this.log( 'info', 'Build indexes...' );
-            
-            const buildIndexes = couchbase.N1qlQuery.fromString( `
-                BUILD INDEX ON ${this.id}(${ toBuild.join( ',' )}) USING GSI;
+            const buildIndexes = N1qlQuery.fromString( `
+                BUILD INDEX ON \`${this.id}\`(${ toBuild.join( ',' )}) USING GSI;
             `);
-    
-            this.query( buildIndexes.consistency( 3 ) );
+            this.query( buildIndexes.consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
         }
     }
 
     private async _getIndexes(){
         const asArray : any[] = await this.manager.getIndexes(),
             indexes : { [ name : string ] : { fields : string[], where : string } } = {};
+
 
         asArray.forEach( ({ name, condition, is_primary, index_key }) => {
             if( !is_primary ){

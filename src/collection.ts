@@ -1,8 +1,8 @@
-import { tools, define, definitions, definitionDecorator, mixinRules, Messenger } from 'type-r'
+import { tools, define, definitions, definitionDecorator, Collection, mixinRules, Messenger } from 'type-r'
 import { base64, Document } from './common'
-import { Query, SelectQuery, QueryParts } from './queries'
+import { Query, SelectQuery, select, QueryParts } from './queries'
 import { DocumentKey, DocumentId, DocumentKeySource } from './key'
-import { DocumentExtent } from './extent'
+import { DocumentExtent, CouchbaseQuery } from './extent'
 const couchbaseErrors = require('couchbase/lib/errors');
 
 
@@ -42,39 +42,68 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         this.key = new DocumentKey( this.key, this );
     }
 
+    // Select query template to scan and return all docs.
+    get selectDocs() : SelectQuery {
+        const { id } = this.bucket;
+
+        return select( '*', `meta(\`${id}\`).id`, `TOSTRING(meta(\`${id}\`).cas) as cas` )
+                .from( this )
+    }
+
+    // Query complete documents
+    async queryDocs( query : CouchbaseQuery ) : Promise< Collection<D> >{
+        const rows = await this.query( query ),
+            bucket = this.bucket.id;
+
+        return new this.Document.Collection<any>(
+            rows.map( row => {
+                let value = row[ bucket ];
+
+                return {
+                    id : this.key.toShort( row.id ),
+                    _cas : row.cas,
+                    ...value
+                }
+            })
+        );
+    }
+
     _from( queryParts : QueryParts ){
         this.bucket._from( queryParts );
         queryParts.store = this;
     }
 
     _where( parts : QueryParts ){
-        let pattern = [ parts.store.key.type + '#' ],
-            code = '';
+        // let pattern = [ parts.store.key.type + '#' ],
+        //     code = '';
+        //
+        // if( parts.code ){
+        //     if( parts.code[ 0 ] === '$' ){
+        //         pattern.push( parts.code );
+        //     }
+        //     else{
+        //         pattern[ 0 ] += parts.code;
+        //     }
+        // }
+        //
+        // if( pattern.length > 1 ){
+        //     pattern.push( "%" );
+        // }
+        // else{
+        //     pattern[ 0 ] += "%";
+        // }
 
-        if( parts.code ){
-            if( parts.code[ 0 ] === '$' ){
-                pattern.push( parts.code );
-            }
-            else{
-                pattern[ 0 ] += parts.code;
-            }
-        }
-
-        if( pattern.length > 1 ){
-            pattern.push( "%" );
-        }
-        else{
-            pattern[ 0 ] += "%";
-        }
-
-        return `(meta(self).\`id\`) like ${ pattern.map( x => `"${x}"` ).join( ' || ') }`;
+        //console.log("name=", parts.name + ", text=",  `(meta(self).\`id\`) like ${ pattern.map( x => `"${x}"` ).join( ' || ') }`);
+        //console.log(`\`_type\` = "${parts.store.key.type}"`)
+        //return `(meta(self).\`id\`) like ${ pattern.map( x => `"${x}"` ).join( ' || ') }`;
+        return `\`_type\` = "${parts.store.key.type}"`;
     }
 
-    async connect( bucket, existingIndexes ){
+    async connect( bucket, initialize : boolean ){
         this.bucket = bucket;
 
         this.log( 'info', 'initializing...' );
-        return await super.onConnect( existingIndexes );
+        await super.onConnect( initialize );
     }
 
     protected log( level, text ){
@@ -107,7 +136,8 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         try{
             const { value, cas } = await method( key );
             value[ this.idAttribute ] = this.key.toShort( key );
-            value.cas = cas;
+            value._cas = cas;
+            value._type = this.key.type;
 
             return doc ? doc.set( value, { parse : true } ) :
                          new this.Document( value, { parse : true } );
@@ -126,14 +156,14 @@ export class DocumentsCollection<D extends Document = Document> extends Document
     }
 
     async getAndLock( id : DocumentKeySource<D>, options = {} ){
-        return this._get( id, key => this.api.getAndLock( key, options ) );
+        return this._get( id, key => this.api.getAndLock( key, options ) ) as Promise<D>;
     }
 
     /**
      * unlock( document ) - unlock the previously locked document.
      */
     async unlock( doc, options = {} ){
-        return this.api.unlock( this.key.get( doc ), doc.cas );
+        return this.api.unlock( this.key.get( doc ), doc._cas );
     }
 
     async getAndTouch( id : DocumentKeySource<D>, expiry, options = {} ){
@@ -171,16 +201,21 @@ export class DocumentsCollection<D extends Document = Document> extends Document
 
         // TODO: handle idAttribute
         const json = doc.toJSON(),
-            { cas } = json as any;
+             cas = (json as any)._cas;
 
-        delete ( json as any ).cas;
+        ( json as any )._type = this.key.type;
+
+        delete ( json as any )._cas;
         delete json[ this.idAttribute ];
 
         let result = await this.api[ method ]( key, json, cas ? { cas, ...options } : options );
 
-        // Update document cas and id
-        doc.cas = result.cas;
-        doc.id = this.key.toShort( key );
+        // Update document cas and id (and type, since it not used before insert)
+        doc.set({
+            id: this.key.toShort( key ),
+            _cas: result.cas,
+            _type: this.key.type
+        })
 
         this.trigger( 'write', doc, key, this );
         this.bucket.trigger( 'write', doc, key, this );
@@ -195,14 +230,15 @@ export class DocumentsCollection<D extends Document = Document> extends Document
      */
     async remove( document : Partial<D> | string, a_options = {} ){
         const key = this.key.get( document ),
-            cas = typeof document === 'string' ? null : document.cas,
+            cas = typeof document === 'string' ? null : document._cas,
             doc = cas ? document : null;
 
         const options = cas ? { cas, ...a_options } : a_options;
 
-        await this.api.remove( key, cas, options );
+        await this.api.remove( key, options );
 
-        this.trigger( 'remove', doc, key, this );
-        this.bucket.trigger( 'remove', doc, key, this );
+        const shortId = this.key.toShort( key );
+        this.trigger( 'remove', doc, shortId, this );
+        this.bucket.trigger( 'remove', doc, shortId, this );
     }
 }

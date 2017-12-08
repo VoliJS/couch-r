@@ -16,7 +16,8 @@ export interface ExtentDefinition extends MessengerDefinition {
 })
 export abstract class DocumentExtent extends Messenger {
     static onDefine({ queries, ...spec } : ExtentDefinition, BaseClass ){
-        this.prototype.queries = queries;
+        this.prototype.queries = { ...queries, ...this.prototype.queries };
+        //this.prototype.queries = queries;
         this._instance = null;
         Messenger.onDefine.call( this, spec, BaseClass );
     }
@@ -54,7 +55,8 @@ export abstract class DocumentExtent extends Messenger {
 
     abstract getDesignDocKey( viewName : string )
 
-    async onConnect( existingIndexes ){
+
+    async onConnect( initialize: boolean ) {
         for( let name in this.queries ){
             // Connect query to the extent.
             const query = this.queries[ name ] = this.queries[ name ].bind( this, name );
@@ -63,12 +65,9 @@ export abstract class DocumentExtent extends Messenger {
             this[ name ] = query.create();
         }
 
-        if( existingIndexes ){
+        if( initialize ){
             // Initialize design documents...
-            await this.initViews();
-
-            // Initialize indexes...
-            return await this.initIndexes( existingIndexes );
+            await this.updateViews();
         }
     }
 
@@ -80,14 +79,14 @@ export abstract class DocumentExtent extends Messenger {
 
     protected abstract log( level, message );
 
-    private async initViews(){
+    private async updateViews(){
         return Promise.all(
             Object.keys( this._designDocs )
                 .map( name => this._designDocs[ name ].update( this ) )
         );
     }
 
-    private async initIndexes( existingIndexes ) : Promise<string[]> {
+    async updateIndexes( existingIndexes ) : Promise<string[]> {
         const toBuild : string[] = [];
 
         for( let name of this._indexes ){
@@ -102,7 +101,7 @@ export abstract class DocumentExtent extends Messenger {
             
             if( !existing ){
                 this.log( 'info', `creating index ${name}...`);
-                await this.query( this[ name ].consistency( 3 ) );
+                await this.query( this[ name ].consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
                 toBuild.push( name );
             }
         }

@@ -15,6 +15,10 @@ export declare class Cluster extends Messenger {
     api: any;
     connection: string;
     options: couchbase.ClusterConstructorOptions;
+    authenticate: {
+        username: string;
+        password: string;
+    };
     connect(options?: {
         initialize: boolean;
     }): Promise<void>;

@@ -22,12 +22,12 @@ export declare abstract class DocumentExtent extends Messenger {
     _indexes: string[];
     appendIndex(index: any, name: any): void;
     abstract getDesignDocKey(viewName: string): any;
-    onConnect(existingIndexes: any): Promise<string[]>;
+    onConnect(initialize: boolean): Promise<void>;
     abstract api: any;
     query(theQuery: CouchbaseQuery, options?: {}): any;
     protected abstract log(level: any, message: any): any;
-    private initViews();
-    private initIndexes(existingIndexes);
+    private updateViews();
+    updateIndexes(existingIndexes: any): Promise<string[]>;
 }
 export declare class DesignDocument {
     id: string;

@@ -57,7 +57,7 @@ export class SelectQuery extends Query {
             where = parts.where.slice();
             
         if( parts.bucket ){
-            from.push( '`' + parts.bucket.name + '`' );
+            from.push( '`' + parts.bucket.id + '`' );
         }
 
         if( parts.store ){

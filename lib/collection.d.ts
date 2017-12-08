@@ -1,7 +1,8 @@
+import { Collection } from 'type-r';
 import { Document } from './common';
-import { QueryParts } from './queries';
+import { SelectQuery, QueryParts } from './queries';
 import { DocumentKey, DocumentId, DocumentKeySource } from './key';
-import { DocumentExtent } from './extent';
+import { DocumentExtent, CouchbaseQuery } from './extent';
 export declare class DocumentsCollection<D extends Document = Document> extends DocumentExtent {
     static Document: typeof Document;
     Document: typeof Document;
@@ -13,9 +14,11 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
     getDesignDocKey(): string;
     bucket: any;
     constructor();
+    readonly selectDocs: SelectQuery;
+    queryDocs(query: CouchbaseQuery): Promise<Collection<D>>;
     _from(queryParts: QueryParts): void;
     _where(parts: QueryParts): string;
-    connect(bucket: any, existingIndexes: any): Promise<string[]>;
+    connect(bucket: any, initialize: boolean): Promise<void>;
     protected log(level: any, text: any): void;
     readonly idAttribute: string;
     readonly api: any;
@@ -27,7 +30,7 @@ export declare class DocumentsCollection<D extends Document = Document> extends 
      */
     _get(id: DocumentKeySource<D>, method: (key: string) => Promise<any>): Promise<Document>;
     get(id: DocumentKeySource<D>, options?: {}): Promise<D>;
-    getAndLock(id: DocumentKeySource<D>, options?: {}): Promise<Document>;
+    getAndLock(id: DocumentKeySource<D>, options?: {}): Promise<D>;
     /**
      * unlock( document ) - unlock the previously locked document.
      */
