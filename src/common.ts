@@ -1,4 +1,4 @@
-const { promisify } = require( 'util' );
+import { promisify } from 'util'
 
 import { define, attr, Record, Messenger, value } from 'type-r'
 

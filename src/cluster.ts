@@ -9,55 +9,32 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 @define
-@definitions({
-    buckets : mixinRules.merge,
-    connection : mixinRules.protoValue,
-    authenticate : mixinRules.protoValue,
-    options : mixinRules.protoValue
-})
 export class Cluster extends Messenger {
-    _buckets : { [ name : string ] : typeof Bucket }
-
-    static onDefine({ buckets, ...spec }, BaseClass ){
-        this.prototype._buckets = buckets;
-        Messenger.onDefine.call( this, spec );
-    }
-
-    static _instance : Cluster
-
-    static get instance() : Cluster {
-        return this._instance || ( this._instance = new (this as any)() );
-    }
-
-    constructor(){
+    constructor( private config : ClusterOptions ){
         super();
-        tools.transform( this as any, this._buckets, Ctor => Ctor.instance );
+
+        tools.transform( this as any, config.buckets, ( bucket, id ) => {
+            bucket.id = id;
+            return bucket;
+        });
     }
 
-    api : any
-
-    connection : string
-    options : any
-
-    authenticate : { username : string, password : string }
+    public api : any
 
     async connect( options = { initialize : false } ){
-        // Create cluster...
-        this.api = new couchbase.Cluster( this.connection );
+        const { config } = this,
+            api = this.api = new couchbase.Cluster( config.connection );
 
-        const authVersion = this.options ? this.options.version : 5;
-        if ( authVersion != 4 ) {
-            const { username, password } = this.authenticate;
-            this.api.authenticate( username, password );
-        }
+        const { username, password } = config.authenticate;
+        api.authenticate( username, password );
 
         // Wrap API to promises...
-        promisifyAll( this.api, 'query' );
+        promisifyAll( api, 'query' );
 
-        // Crappy couchbase API for openBucket forces us to make custom promise wrapper...
-        const openBucket = this.api.openBucket.bind( this.api );
+        // Non-standard couchbase API for openBucket forces us to make custom promise wrapper...
+        const openBucket = api.openBucket.bind( api );
 
-        this.api.openBucket = ( name, password? ) => {
+        api.openBucket = ( name, password? ) => {
             return new Promise( ( resolve, reject ) => {
                 const bucket = password ? openBucket( name, password, whenDone ) : openBucket( name, whenDone );
 
@@ -67,13 +44,16 @@ export class Cluster extends Messenger {
             } );
         }
 
-        this.log( 'info', 'connecting...' );
+        this.log( 'info', `connecting bucket(s) ${ Object.keys( this.config.buckets ).join( ' ,' ) }...` );
 
-        for( let name in this._buckets ){
+        // Connect buckets one by one...
+        for( let name in config.buckets ){
             await this[ name ].connect( this, options.initialize );
         }
 
-        process.on('SIGINT', this.stop );
+        this.log( 'info', 'buckets are connected.' );
+
+        process.on( 'SIGINT', this.stop );
     }
 
     log( level, message, object? ){
@@ -98,7 +78,30 @@ export class Cluster extends Messenger {
 
     stop = () =>{
         // TODO: gracefully close DB connection and pending queries.
-
         process.exit( 0 );
     }
+}
+
+/**
+ *  @define
+    export const database = cluster({
+        connection : config.couchbase.connection,
+        authenticate : config.couchbase.authenticate,
+        options : config.couchbase.options || {},
+
+        buckets : { omnia, omnia_assets, omnia_history }
+    });
+
+    export default new Database();
+ */
+
+interface ClusterOptions {
+    connection : string
+    authenticate : { username : string, password : string }
+    options : any
+    buckets : { [ name : string ] : Bucket }
+}
+
+export function cluster<T extends ClusterOptions>( options : T ) : Cluster & { [ name in keyof T[ 'buckets' ]] : T[ 'buckets' ][ name ] }{
+    return new Cluster( options ) as any;
 }
