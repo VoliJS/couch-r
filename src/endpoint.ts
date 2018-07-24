@@ -3,15 +3,16 @@ import { DocumentsCollection } from './collection'
 import { N1qlStringQuery, N1qlQuery} from 'couchbase'
 import { select, selectDocs, Query } from './queries'
 
-import { DocumentId } from './key'
+import { DocumentId, DocumentKey } from './key'
 import { Document } from './common'
-import { Messenger } from 'couch-r';
+import { Messenger } from 'type-r';
+import { DocumentExtent } from './extent';
 
 const couchbaseErrors = require('couchbase/lib/errors');
 
 const defaultRecord = { idAttribute : 'id' };
 
-type DocumentKey = string | number | object /* doc fields to construct the key */;
+//type DocumentKey = string | number | object /* doc fields to construct the key */;
 
 interface ReadOptions {
     lock? : boolean
@@ -44,35 +45,60 @@ interface ListOptions {
     params? : object
 }
 
-@define({
-    filters : mixinRules.merge
-})
-export class DocumentEndpoint extends DocumentsCollection implements IOEndpoint {
-    static Document = Document;
+@define
+export class DocumentEndpoint extends DocumentExtent implements IOEndpoint {
+    bucket = null
+    key : DocumentKey<Document>
 
-    static onDefine({ filters, ...definitions } : any, BaseClass ){
-        this.prototype._filters = filters;
-        DocumentsCollection.onDefine.call( this, definitions, BaseClass );
+    protected log( level, text ){
+        tools.log( level, `[Couch-R] documents ${ this.key.type }: ${ text }`);
     }
 
-    // Hack for backward compatibility
-    get instance(){ return this; }
-    get asProp(){
-        return definitionDecorator( 'collections', this );
+    // Document collections are uniquely identified with it's document key type.
+    get id() : string {
+        return this.key.type;
     }
 
-    protected _filters : { [ name : string ] : string };
-    filters : { [ name : string ] : N1qlStringQuery } = {};
+    // For the document collections, there's one design doc for the collection.
+    getDesignDocKey(){
+        return this.id;
+    }
 
+    get api(){
+        return this.bucket.api;
+    }
+
+    get manager(){
+        return this.bucket.manager;
+    }
+    
+    async connect( bucket, initialize : boolean ){
+        this.bucket = bucket;
+
+        // Compile filters...
+        tools.transform( this as any, this.filters, ( filter, name ) => (
+            typeof filter === 'function' ?
+                ( params : object ) => filter.call( this, params ).create().adhoc( true ) :
+                ( filter.create() as N1qlStringQuery ).adhoc( false )
+        ));
+        
+        this.log( 'info', 'initializing...' );
+        await super.onConnect( initialize );
+    }
+
+    constructor( options ){
+        super( options );
+        this.key = new DocumentKey( options.key, this );
+        this.filters.all = selectDocs();
+    }
+
+    filters : { [ name : string ] : Query | ( ( params : object ) => Query ) } = {};
 
     fetchPreviousOnUpdate: boolean
 
-    async connect( bucket, initialize : boolean ){
-        this.queries.all = selectDocs();
-        super.connect( bucket, initialize );
-    }
-
     async list( { filter = 'all', params = {} } : ListOptions, collection?: any ): Promise<JsonDocument[]> {
+        if( !this.filters[ filter ] ) throw new ReferenceError( 'No such filter: ' + filter );
+
         const q = this[ filter ];
         return this.queryFilter( typeof q === 'function' ? this[ filter ]( params ) : q, params, collection.model.prototype.idAttribute );
     }
@@ -145,7 +171,7 @@ export class DocumentEndpoint extends DocumentsCollection implements IOEndpoint 
         this.bucket.trigger( 'updated', json, prev );
     }
     
-    async read(id: DocumentKey, options: ReadOptions = {}, record = defaultRecord ): Promise<JsonDocument> {
+    async read(id: any, options: ReadOptions = {}, record = defaultRecord ): Promise<JsonDocument> {
         const fullId = this.key.get( id ),
         { value, cas } = options.lock ? await this.api.getAndLock( fullId ) :
                             options.touch ? await this.api.getAndTouch( fullId, options.expiry ) :
@@ -188,10 +214,7 @@ export class DocumentEndpoint extends DocumentsCollection implements IOEndpoint 
 }
 
 export function documentIO<T extends EndpointSpec>( spec : T ) : DocumentEndpoint & { [ name in keyof T[ "queries" ] ] : N1qlStringQuery } & T {
-    @define( spec )
-    class DocumentIO extends DocumentEndpoint{}
-
-    return DocumentIO.instance as any;
+    return new DocumentEndpoint( spec ) as any;
 }
 
 export interface EndpointSpec {

@@ -1,25 +1,27 @@
-import { promisifyAll } from './common'
+import { promisifyAll, Document } from './common'
 import { Query, QueryParts, index } from './queries'
 import { N1qlQuery } from 'couchbase'
-import { define, definitions, definitionDecorator, tools, mixinRules, MessengerDefinition, Messenger } from 'type-r'
-import { DocumentExtent, ExtentDefinition } from './extent'
+import { define, definitions, definitionDecorator, tools, mixinRules, MessengerDefinition, Messenger, IOEndpoint } from 'type-r'
+import { DocumentExtent, ExtentDefinition, IndexesSchema } from './extent'
 import { DocumentsCollection } from './collection'
 
 const couchbaseErrors = require('couchbase/lib/errors');
 
 export interface BucketDefinition extends ExtentDefinition {
-    collections? : { [ name : string ] : typeof DocumentsCollection }
+    documents : { [ name : string ] : typeof Document }
 }
 
 @define
-@definitions({
-    id : mixinRules.protoValue,
-    password : mixinRules.protoValue,
-    collections : mixinRules.merge
-})
 export class Bucket extends DocumentExtent {
+    private endpoints : IOEndpoint[]
+
+    constructor( options ){
+        super( options );
+        this.queries.ix_collection_type = index( '_type' );
+        this.endpoints = Object.keys( options.documents ).map( x => options.documents[ x ].endpoint );
+    }
+
     id : string
-    password : string
 
     // For the bucket-level views, we have one design doc per view.
     getDesignDocKey( viewName : string ) : string {
@@ -33,20 +35,7 @@ export class Bucket extends DocumentExtent {
     cluster : any = null
     api : any = null
 
-    _collections : DocumentsCollection[]
-
-    static onDefine({ collections, ...spec } : BucketDefinition ){
-        const { prototype } = this;
-        prototype._collections = processSpec( prototype, collections );
-        DocumentExtent.onDefine.call( this, spec );
-    }
-
-    static get asProp(){
-        return definitionDecorator( 'buckets', this );
-    }
-
-    @index( '_type' ).asProp
-    ix_collection_type : N1qlQuery
+    documents : { [ name : string ] : typeof Document }
 
     private _manager : any
     get manager(){
@@ -66,13 +55,8 @@ export class Bucket extends DocumentExtent {
         this.cluster = cluster;
 
         this.log( 'info', `connecting...` );
-        const authVersion = cluster.options ? cluster.options.version : 5;
 
-        if ( authVersion === 4 ) {
-            this.api = await this.cluster.api.openBucket( this.id, this.cluster.authenticate.password );
-        } else {
-            this.api = await this.cluster.api.openBucket( this.id );
-        }
+        this.api = await this.cluster.api.openBucket( this.id );
 
         // Promisify bucket api...
         promisifyAll( this.api, 'append', 'counter', 'get', 'getAndLock',
@@ -86,6 +70,7 @@ export class Bucket extends DocumentExtent {
         }
 
         let indexes : IndexesSchema, toBuild;
+        
         if ( initialize ) {
             indexes = await this._getIndexes();
             this.log( 'info', 'existing indexes:', indexes );
@@ -97,7 +82,7 @@ export class Bucket extends DocumentExtent {
 
         this.log( 'info', 'connect document collections...');
 
-        for( let collection of this._collections ){
+        for( let collection of this.endpoints ){
             await collection.connect( this, initialize );
             if ( initialize ) {
                 const cIndexes : string[] = await collection.updateIndexes(indexes);
@@ -133,14 +118,4 @@ export class Bucket extends DocumentExtent {
         
         return schema.indexes;
     }
-}
-
-function processSpec( self : Bucket, objects : { [ name : string ] : typeof DocumentsCollection } ) : DocumentsCollection[] {
-    return objects ? Object.keys( objects ).map( name => (
-        self[ name ] = objects[ name ].instance
-    ) ) : [];
-}
-
-export interface IndexesSchema {
-    [ name : string ] : string
 }

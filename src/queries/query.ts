@@ -35,7 +35,7 @@ export class Query {
         return this.append( update );
     }
 
-    create() : couchbase.N1qlQuery | couchbase.ViewQuery {
+    create() : couchbase.N1qlStringQuery | couchbase.ViewQuery {
         return couchbase.N1qlQuery.fromString( this.toString() );
     }
 

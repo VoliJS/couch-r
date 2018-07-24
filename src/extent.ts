@@ -1,43 +1,41 @@
 import { Messenger, MessengerDefinition, mixinRules, tools, define, definitions } from 'type-r'
 import { Query, MapReduceQuery, MapReduceView, SelectQuery } from './queries'
 import { N1qlQuery, N1qlStringQuery, ViewQuery } from 'couchbase'
-import { IndexesSchema } from 'couch-r';
+
+export interface IndexesSchema {
+    [ name : string ] : string
+}
 
 export type CouchbaseQuery = N1qlQuery | N1qlStringQuery | ViewQuery;
 
-export interface ExtentDefinition extends MessengerDefinition {
-    queries : {
-        [ name : string ] : Query
-    }
+export interface ExtentDefinition {
+    queries : Queries
+}
+
+interface Queries {
+    [ name : string ] : Query
 }
 
 @define
-@definitions({
-    queries : mixinRules.merge
-})
 export abstract class DocumentExtent extends Messenger {
-    static onDefine({ queries, ...spec } : ExtentDefinition, BaseClass ){
-        this.prototype.queries = { ...queries, ...this.prototype.queries };
-        //this.prototype.queries = queries;
-        this._instance = null;
-        Messenger.onDefine.call( this, spec, BaseClass );
+    constructor( options : ExtentDefinition ){
+        super();
+        tools.defaults( this, options );
     }
 
-    static _instance : DocumentExtent
+    queries : Queries
 
-    static get instance() : DocumentExtent {
-        return this._instance || ( this._instance = new ( this as any )() );
-    }
+    abstract manager : any
 
-    queries : {
-        [ name : string ] : Query
+    _indexes : string[] = []; 
+
+    appendIndex( index, name ){
+        this._indexes.push( name );
     }
 
     _designDocs : {
         [ name : string ] : DesignDocument
     } = {}
-
-    abstract manager : any
 
     appendView( view, name ){
         const key = this.getDesignDocKey( name ),
@@ -46,12 +44,6 @@ export abstract class DocumentExtent extends Messenger {
         designDoc.append( view, name );
 
         return key;
-    }
-
-    _indexes : string[] = []; 
-
-    appendIndex( index, name ){
-        this._indexes.push( name );
     }
 
     abstract getDesignDocKey( viewName : string )

@@ -3,55 +3,17 @@ import { base64, Document } from './common'
 import { Query, SelectQuery, select, QueryParts } from './queries'
 import { DocumentKey, DocumentId, DocumentKeySource } from './key'
 import { DocumentExtent, CouchbaseQuery } from './extent'
+import { DocumentEndpoint } from './endpoint';
 const couchbaseErrors = require('couchbase/lib/errors');
-
 
 @define
 @definitions({
     Document : mixinRules.protoValue,
     key : mixinRules.protoValue
 })
-export class DocumentsCollection<D extends Document = Document> extends DocumentExtent {
+export class DocumentsCollection<D extends Document = Document> extends DocumentEndpoint {
     static Document : typeof Document
     Document : typeof Document
-
-    static key : DocumentId<Document>
-
-    static instance : DocumentsCollection<Document>
-    //
-    // static get instance() : DocumentsCollection<Document> {
-    //     return this._instance || ( this._instance = new ( this as any )() );
-    // }
-    key : DocumentKey<D>
-
-    static get asProp(){
-        return definitionDecorator( 'collections', this );
-    }
-
-    // Document collections are uniquely identified with it's document key type.
-    get id() : string {
-        return this.key.type;
-    }
-
-    // For the document collections, there's one design doc for the collection.
-    getDesignDocKey(){
-        return this.id;
-    }
-
-    bucket = null;
-
-    constructor(){
-        super();
-        this.key = new DocumentKey( this.key, this );
-    }
-
-    // Select query template to scan and return all docs.
-    get selectDocs() : SelectQuery {
-        const { id } = this.bucket;
-
-        return select( '*', `meta(\`${id}\`).id`, `TOSTRING(meta(\`${id}\`).cas) as cas` )
-                .from( this )
-    }
 
     toDocument( row ) : D {
         const value = row[ this.bucket.id ];
@@ -61,6 +23,14 @@ export class DocumentsCollection<D extends Document = Document> extends Document
             _cas : row.cas,
             ...value
         }) as D;
+    }
+
+    // Select query template to scan and return all docs.
+    get selectDocs() : SelectQuery {
+        const { id } = this.bucket;
+
+        return select( '*', `meta(\`${id}\`).id`, `TOSTRING(meta(\`${id}\`).cas) as cas` )
+                .from( this )
     }
 
     // Query complete documents
@@ -81,27 +51,8 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         return `\`_type\` = "${parts.store.key.type}"`;
     }
 
-    async connect( bucket, initialize : boolean ){
-        this.bucket = bucket;
-
-        this.log( 'info', 'initializing...' );
-        await super.onConnect( initialize );
-    }
-
-    protected log( level, text ){
-        tools.log( level, `[Couch-R] Collection ${ this.key.type }: ${ text }`);
-    }
-
     get idAttribute(){
         return this.Document.prototype.idAttribute;
-    }
-
-    get api(){
-        return this.bucket.api;
-    }
-
-    get manager(){
-        return this.bucket.manager;
     }
 
     /**

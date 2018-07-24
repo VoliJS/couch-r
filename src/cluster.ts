@@ -53,6 +53,8 @@ export class Cluster extends Messenger {
 
         this.log( 'info', 'buckets are connected.' );
 
+        this.trigger( 'connected', this );
+
         process.on( 'SIGINT', this.stop );
     }
 
@@ -78,6 +80,8 @@ export class Cluster extends Messenger {
 
     stop = () =>{
         // TODO: gracefully close DB connection and pending queries.
+        this.trigger( 'stopping', this );
+        
         process.exit( 0 );
     }
 }
