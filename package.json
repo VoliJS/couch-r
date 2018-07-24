@@ -25,11 +25,11 @@
   },
   "homepage": "https://github.com/Volicon/couch-r#readme",
   "devDependencies": {
-    "@types/couchbase": "^2.1.30",
-    "typescript": "^2.5.3"
+    "@types/couchbase": "*",
+    "typescript": "*"
   },
   "dependencies": {
-    "couchbase": "^2.4.3",
-    "type-r": "^1.1.0-a12"
+    "couchbase": "*",
+    "type-r": "*"
   }
 }
