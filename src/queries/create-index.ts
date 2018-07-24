@@ -11,13 +11,6 @@ export class CreateIndexQuery extends Query {
         });
     }
 
-    notEqual( index ) : boolean {
-        const { where } = index,
-            fields = index.fields.map( x => x.replace( /`/g, '' ) );
-
-        return tools.notEqual( fields, this.parts.fields ) || this.parts.where.map( x => '(' + x + ')' ).join( ' AND ' ) !== where;
-    }
-
     bind( extent, name : string ){
         const parts : any = { name };
         extent._from( parts );
@@ -44,7 +37,7 @@ export class CreateIndexQuery extends Query {
 
     toString(){
         const { parts } = this,
-            fields = parts.fields.map( x => "`" + x + "`" ).join(',')
+            fields = parts.fields.map( x => x.indexOf(' ') >= 0 ? x : "`" + x + "`" ).join(',')
 
         let query = `CREATE INDEX \`${ parts.name }\` ON \`${ parts.bucket.id }\`(${ fields })\n`;
 

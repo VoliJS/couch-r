@@ -5,6 +5,8 @@ import { define, definitions, definitionDecorator, tools, mixinRules, MessengerD
 import { DocumentExtent, ExtentDefinition } from './extent'
 import { DocumentsCollection } from './collection'
 
+const couchbaseErrors = require('couchbase/lib/errors');
+
 export interface BucketDefinition extends ExtentDefinition {
     collections? : { [ name : string ] : typeof DocumentsCollection }
 }
@@ -64,11 +66,17 @@ export class Bucket extends DocumentExtent {
         this.cluster = cluster;
 
         this.log( 'info', `connecting...` );
-        this.api = await this.cluster.api.openBucket( this.id );
+        const authVersion = cluster.options ? cluster.options.version : 5;
+
+        if ( authVersion === 4 ) {
+            this.api = await this.cluster.api.openBucket( this.id, this.cluster.authenticate.password );
+        } else {
+            this.api = await this.cluster.api.openBucket( this.id );
+        }
 
         // Promisify bucket api...
         promisifyAll( this.api, 'append', 'counter', 'get', 'getAndLock',
-            'getAndTouch', 'getMulti', 'getReplica', 'insert', 'prepend', 'query', 'upsert', 'remove', 'replace', 'unlock' );
+            'getAndTouch', 'touch', 'getMulti', 'getReplica', 'insert', 'prepend', 'query', 'upsert', 'remove', 'replace', 'unlock' );
 
         await super.onConnect( initialize );
 
@@ -77,7 +85,7 @@ export class Bucket extends DocumentExtent {
             await this.manager.createPrimaryIndex( {name: 'ix_primary', ignoreIfExists: true},  );
         }
 
-        let indexes, toBuild;
+        let indexes : IndexesSchema, toBuild;
         if ( initialize ) {
             indexes = await this._getIndexes();
             this.log( 'info', 'existing indexes:', indexes );
@@ -101,25 +109,29 @@ export class Bucket extends DocumentExtent {
             const buildIndexes = N1qlQuery.fromString( `
                 BUILD INDEX ON \`${this.id}\`(${ toBuild.join( ',' )}) USING GSI;
             `);
-            this.query( buildIndexes.consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
+            await this.query( buildIndexes.consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
+
+            await this.api.upsert( "##schema", { indexes } );
         }
     }
 
-    private async _getIndexes(){
-        const asArray : any[] = await this.manager.getIndexes(),
-            indexes : { [ name : string ] : { fields : string[], where : string } } = {};
-
-
-        asArray.forEach( ({ name, condition, is_primary, index_key }) => {
-            if( !is_primary ){
-                indexes[ name ] = {
-                    fields : index_key,
-                    where : condition || ""
+    private async _getIndexes() : Promise<IndexesSchema> {
+        let schema;
+    
+        try {
+            const { value } = await this.api.get( '##schema' );
+            schema = value;
+        }
+        catch( e ){
+            if ( e.code === couchbaseErrors.keyNotFound ) {
+                schema = {
+                    indexes : {}
                 };
             }
-        });
-
-        return indexes;
+            else throw e;
+        }
+        
+        return schema.indexes;
     }
 }
 
@@ -127,4 +139,8 @@ function processSpec( self : Bucket, objects : { [ name : string ] : typeof Docu
     return objects ? Object.keys( objects ).map( name => (
         self[ name ] = objects[ name ].instance
     ) ) : [];
+}
+
+export interface IndexesSchema {
+    [ name : string ] : string
 }

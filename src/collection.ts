@@ -18,7 +18,10 @@ export class DocumentsCollection<D extends Document = Document> extends Document
     static key : DocumentId<Document>
 
     static instance : DocumentsCollection<Document>
-
+    //
+    // static get instance() : DocumentsCollection<Document> {
+    //     return this._instance || ( this._instance = new ( this as any )() );
+    // }
     key : DocumentKey<D>
 
     static get asProp(){
@@ -50,21 +53,22 @@ export class DocumentsCollection<D extends Document = Document> extends Document
                 .from( this )
     }
 
+    toDocument( row ) : D {
+        const value = row[ this.bucket.id ];
+
+        return new this.Document({
+            id : this.key.toShort( row.id ),
+            _cas : row.cas,
+            ...value
+        }) as D;
+    }
+
     // Query complete documents
-    async queryDocs( query : CouchbaseQuery ) : Promise< Collection<D> >{
-        const rows = await this.query( query ),
-            bucket = this.bucket.id;
+    async queryDocs( query : CouchbaseQuery ) : Promise<Collection<D>>{
+        const rows = await this.query( query );
 
         return new this.Document.Collection<any>(
-            rows.map( row => {
-                let value = row[ bucket ];
-
-                return {
-                    id : this.key.toShort( row.id ),
-                    _cas : row.cas,
-                    ...value
-                }
-            })
+            rows.map( row => this.toDocument( row ) )
         );
     }
 
@@ -74,28 +78,6 @@ export class DocumentsCollection<D extends Document = Document> extends Document
     }
 
     _where( parts : QueryParts ){
-        // let pattern = [ parts.store.key.type + '#' ],
-        //     code = '';
-        //
-        // if( parts.code ){
-        //     if( parts.code[ 0 ] === '$' ){
-        //         pattern.push( parts.code );
-        //     }
-        //     else{
-        //         pattern[ 0 ] += parts.code;
-        //     }
-        // }
-        //
-        // if( pattern.length > 1 ){
-        //     pattern.push( "%" );
-        // }
-        // else{
-        //     pattern[ 0 ] += "%";
-        // }
-
-        //console.log("name=", parts.name + ", text=",  `(meta(self).\`id\`) like ${ pattern.map( x => `"${x}"` ).join( ' || ') }`);
-        //console.log(`\`_type\` = "${parts.store.key.type}"`)
-        //return `(meta(self).\`id\`) like ${ pattern.map( x => `"${x}"` ).join( ' || ') }`;
         return `\`_type\` = "${parts.store.key.type}"`;
     }
 
@@ -151,7 +133,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         }
     }
 
-    async get( id : DocumentKeySource<D>, options = {} ){
+    async get( id : DocumentKeySource<D>, options = {} ) : Promise<D> {
         return this._get( id, key => this.api.get( key, options ) ) as Promise<D>;
     }
 
@@ -205,10 +187,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
 
         ( json as any )._type = this.key.type;
 
-        delete ( json as any )._cas;
-        delete json[ this.idAttribute ];
-
-        let result = await this.api[ method ]( key, json, cas ? { cas, ...options } : options );
+        let result = await this.api[ method ]( key, tools.omit( json, '_cas', this.idAttribute ), cas ? { cas, ...options } : options );
 
         // Update document cas and id (and type, since it not used before insert)
         doc.set({
@@ -219,6 +198,11 @@ export class DocumentsCollection<D extends Document = Document> extends Document
 
         this.trigger( 'write', doc, key, this );
         this.bucket.trigger( 'write', doc, key, this );
+
+        // Hack! Send IOEndpoints events.
+        ( json as any )._cas = result.cas;
+        this.trigger( 'update', json );
+        this.bucket.trigger( 'update', json );
 
         return doc;
     }
@@ -240,5 +224,10 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         const shortId = this.key.toShort( key );
         this.trigger( 'remove', doc, shortId, this );
         this.bucket.trigger( 'remove', doc, shortId, this );
+
+        // Hack! Send IOEndpoints events...
+        this.trigger( 'removed', shortId );
+        this.bucket.trigger( 'removed', shortId );
+
     }
 }

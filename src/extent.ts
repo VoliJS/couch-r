@@ -1,6 +1,7 @@
 import { Messenger, MessengerDefinition, mixinRules, tools, define, definitions } from 'type-r'
-import { Query, MapReduceQuery, MapReduceView } from './queries'
+import { Query, MapReduceQuery, MapReduceView, SelectQuery } from './queries'
 import { N1qlQuery, N1qlStringQuery, ViewQuery } from 'couchbase'
+import { IndexesSchema } from 'couch-r';
 
 export type CouchbaseQuery = N1qlQuery | N1qlStringQuery | ViewQuery;
 
@@ -58,11 +59,12 @@ export abstract class DocumentExtent extends Messenger {
 
     async onConnect( initialize: boolean ) {
         for( let name in this.queries ){
+            const q = this.queries[ name ];
             // Connect query to the extent.
-            const query = this.queries[ name ] = this.queries[ name ].bind( this, name );
+            const query = this.queries[ name ] = q.bind( this, name );
 
             // Create the corresponding Couchbase query object.
-            this[ name ] = query.create();
+            this[ name ] = q instanceof SelectQuery ? ( query.create() as N1qlStringQuery ).adhoc( false ) : query.create();
         }
 
         if( initialize ){
@@ -86,14 +88,14 @@ export abstract class DocumentExtent extends Messenger {
         );
     }
 
-    async updateIndexes( existingIndexes ) : Promise<string[]> {
+    async updateIndexes( existingIndexes : IndexesSchema ) : Promise<string[]> {
         const toBuild : string[] = [];
 
         for( let name of this._indexes ){
             let existing = existingIndexes[ name ];
             const local : any = this.queries[ name ];
 
-            if( existing && local.notEqual( existing ) ){
+            if( existing && local.toString() !== existing ){
                 this.log( 'info', `dropping index ${name}...` );
                 await this.manager.dropIndex( name, { ignoreIfNotExists : true } );
                 existing = null;
@@ -101,8 +103,17 @@ export abstract class DocumentExtent extends Messenger {
             
             if( !existing ){
                 this.log( 'info', `creating index ${name}...`);
-                await this.query( this[ name ].consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
+                try{
+                    await this.query( this[ name ].consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
+                }
+                catch( e ){
+                    // Workaround for the first run on the existing database...
+                    await this.manager.dropIndex( name, { ignoreIfNotExists : true } );
+                    await this.query( this[ name ].consistency( N1qlQuery.Consistency.STATEMENT_PLUS ) );
+                }
+
                 toBuild.push( name );
+                existingIndexes[ name ] = local.toString();
             }
         }
 
@@ -139,4 +150,3 @@ export class DesignDocument {
             });
     }
 }
-

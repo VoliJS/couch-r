@@ -24,6 +24,14 @@ export class Document extends Record {
     _type : string
 
     static id : any = String.value( null );
+
+    static get ref(){
+        return this.has
+            .toJSON( x => ( x && x.id ) || null )
+            .parse( x => {
+                return { id : x };
+            });
+    }
 }
 
 var digitsStr = 

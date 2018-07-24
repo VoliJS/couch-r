@@ -4,6 +4,10 @@ export function select( ...fields : string[] ){
     return new SelectQuery({ select : fields });
 }
 
+export function selectDocs(){
+    return select( '*', 'meta().id', `TOSTRING(meta().cas) as cas` );
+}
+
 export class SelectQuery extends Query {
     constructor( parts = {} ){
         super({
@@ -43,12 +47,24 @@ export class SelectQuery extends Query {
         return this.append({ where : args } );
     }
 
+    whereIf( condition, ...args : string[] ){
+        return condition ? this.append({ where : args } ) : this;
+    }
+
     group_by( ...args : string[] ){
         return this.append({ group_by : args } );
     }
 
     order_by( ...args : string[] ){
         return this.append({ order_by : args });
+    }
+
+    limit( x : number | string ){
+        return this.append({ limit : x });
+    }
+
+    offset( x : number | string ){
+        return this.append({ offset : x });
     }
 
     toString(){
@@ -73,6 +89,8 @@ export class SelectQuery extends Query {
         if( where.length ) query += `WHERE ${ where.map( x => '(' + x + ')' ).join( ' AND ' ) }\n`;
         if( parts.group_by.length ) query += `GROUP BY ${ parts.group_by.join( ',' ) }\n`;
         if( parts.order_by.length ) query += `ORDER BY ${ parts.order_by.join( ',' ) }\n`;
+        if( parts.limit !== void 0 ) query += `LIMIT ${ parts.limit }\n`;
+        if( parts.offset !== void 0 ) query += `OFFSET ${ parts.offset }\n`;
 
         return query;
     }

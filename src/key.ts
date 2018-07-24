@@ -111,6 +111,10 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
         return this.fromShort( this.code ? this.code( doc ).join( idSeparator ) : '' );
     }
 
+    getShort( doc : DocumentKeySource<D> ) : string {
+        return this.toShort( this.get( doc ) );
+    }
+
     toShort( fullId : string ) : string {
         const edge = fullId.indexOf( typeSeparator );
         return edge >= 0 ? fullId.substr( edge + 1 ) : fullId;

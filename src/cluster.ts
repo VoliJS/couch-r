@@ -2,7 +2,11 @@ import { promisifyAll } from './common'
 import { tools, define, definitions, mixinRules, Messenger } from 'type-r'
 import * as couchbase from 'couchbase'
 import { Bucket } from './bucket'
-import { exit } from 'process'
+import * as process from 'process'
+
+process.on('unhandledRejection', (reason, p) => {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+});
 
 @define
 @definitions({
@@ -33,7 +37,7 @@ export class Cluster extends Messenger {
     api : any
 
     connection : string
-    options : couchbase.ClusterConstructorOptions
+    options : any
 
     authenticate : { username : string, password : string }
 
@@ -41,10 +45,12 @@ export class Cluster extends Messenger {
         // Create cluster...
         this.api = new couchbase.Cluster( this.connection );
 
-        const { username, password } = this.authenticate;
-        
-        this.api.authenticate( username, password );
-        
+        const authVersion = this.options ? this.options.version : 5;
+        if ( authVersion != 4 ) {
+            const { username, password } = this.authenticate;
+            this.api.authenticate( username, password );
+        }
+
         // Wrap API to promises...
         promisifyAll( this.api, 'query' );
 
@@ -54,7 +60,7 @@ export class Cluster extends Messenger {
         this.api.openBucket = ( name, password? ) => {
             return new Promise( ( resolve, reject ) => {
                 const bucket = password ? openBucket( name, password, whenDone ) : openBucket( name, whenDone );
-                
+
                 function whenDone( err ){
                     err ? reject( err ) : resolve( bucket );
                 }
@@ -66,6 +72,8 @@ export class Cluster extends Messenger {
         for( let name in this._buckets ){
             await this[ name ].connect( this, options.initialize );
         }
+
+        process.on('SIGINT', this.stop );
     }
 
     log( level, message, object? ){
@@ -77,12 +85,20 @@ export class Cluster extends Messenger {
             .connect( options )
             .then( () => {
                 this.log( 'info', 'starting application...' );
-                return init ? init( this ) : void 0;
+                const res = init ? init( this ) : void 0;
+                process.send && process.send('ready');
+                return res;
             })
             .catch( error => {
                 this.log( 'error', 'stopped due to unhandled exception' );
                 console.log( error );
-                exit( 1 );
+                process.exit( 1 );
             });
+    }
+
+    stop = () =>{
+        // TODO: gracefully close DB connection and pending queries.
+
+        process.exit( 0 );
     }
 }
