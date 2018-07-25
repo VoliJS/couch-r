@@ -1,9 +1,8 @@
 import { tools, define, definitions, definitionDecorator, Collection, mixinRules, Messenger } from 'type-r'
-import { base64, Document } from './common'
 import { Query, SelectQuery, select, QueryParts } from './queries'
-import { DocumentKey, DocumentId, DocumentKeySource } from './key'
+import { DocumentKey, DocumentId, DocumentKeySource, DocAlike } from './key'
 import { DocumentExtent, CouchbaseQuery } from './extent'
-import { DocumentEndpoint } from './document';
+import { Document, DocumentEndpoint } from './document';
 const couchbaseErrors = require('couchbase/lib/errors');
 
 @define
@@ -60,7 +59,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
      * get({ props }) when !idCounter - read document by composite key
      * get( document ) - fetch the document
      */
-    async _get( id : DocumentKeySource<D>, method : ( key : string ) => Promise< any > )  /* this.Document */ {
+    async _get( id : DocumentKeySource, method : ( key : string ) => Promise< any > )  /* this.Document */ {
         if( !id ) return null;
 
         const doc = id instanceof this.Document ? id : null;
@@ -84,11 +83,11 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         }
     }
 
-    async get( id : DocumentKeySource<D>, options = {} ) : Promise<D> {
+    async get( id : DocumentKeySource, options = {} ) : Promise<D> {
         return this._get( id, key => this.api.get( key, options ) ) as Promise<D>;
     }
 
-    async getAndLock( id : DocumentKeySource<D>, options = {} ){
+    async getAndLock( id : DocumentKeySource, options = {} ){
         return this._get( id, key => this.api.getAndLock( key, options ) ) as Promise<D>;
     }
 
@@ -99,7 +98,7 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         return this.api.unlock( this.key.get( doc ), doc._cas );
     }
 
-    async getAndTouch( id : DocumentKeySource<D>, expiry, options = {} ){
+    async getAndTouch( id : DocumentKeySource, expiry, options = {} ){
         return this._get( id, key => this.api.getAndTouch( key, expiry, options ) );
     }
 
@@ -116,20 +115,20 @@ export class DocumentsCollection<D extends Document = Document> extends Document
         // TODO: create/update collection.
     }
 
-    async upsert( a_doc : Partial<D>, options = {} ){
+    async upsert( a_doc : DocAlike, options = {} ){
         return this._insert( a_doc, 'upsert', options );
     }
 
-    async insert( a_doc : Partial<D>, options = {} ){
+    async insert( a_doc : DocAlike, options = {} ){
         return this._insert( a_doc, 'insert', options );
     }
 
-    async replace( a_doc : Partial<D>, options = {} ){
+    async replace( a_doc : DocAlike, options = {} ){
         return this._insert( a_doc, 'replace', options );
     }
 
-    async _insert( a_doc : Partial<D>, method, options ){
-        const doc = ( a_doc instanceof this.Document ? a_doc : new this.Document( a_doc ) ) as D,
+    async _insert( a_doc : DocAlike, method, options ){
+        const doc = a_doc instanceof this.Document ? a_doc : new this.Document( a_doc ),
             key = await this.key.make( doc );
 
         // TODO: handle idAttribute

@@ -13,6 +13,10 @@ export interface DocumentId{
     counter? : boolean | KeyCounter
 }
 
+export interface DocAlike {
+    id : string | number
+}
+
 export class DocumentKey implements DocumentId {
     type : string
     code : KeyCode
@@ -25,7 +29,7 @@ export class DocumentKey implements DocumentId {
         this.counter = counter === void 0 || counter === true ? this.defaultCounter : counter;
     }
 
-    defaultCounter( doc : object ) : string {
+    defaultCounter( doc : DocAlike ) : string {
         // By default there is the separate counter for each `type#code`
         return this.get( doc, true );
     }
@@ -36,7 +40,7 @@ export class DocumentKey implements DocumentId {
         return byType[ byType.length - 1 ].split( idSeparator );
     }
 
-    getCounterId( doc : object ) : string {
+    getCounterId( doc : DocAlike ) : string {
         // All counter ids starts with typeSeparator. #...
         if ( typeof this.counter === 'function' ) {
             const id = this.counter( doc )
@@ -49,7 +53,7 @@ export class DocumentKey implements DocumentId {
     /**
      * counterValue( doc, code ) - take the next counter value
      */
-    private async getCounterValue( doc : object, next : number ) : Promise<string> {
+    private async getCounterValue( doc : DocAlike, next : number ) : Promise<string> {
         const counterId = this.getCounterId( doc );
 
         if( counterId ){
@@ -63,12 +67,12 @@ export class DocumentKey implements DocumentId {
         return null;
     }
 
-    async make( doc : { id : string } ) : Promise<string> {
+    async make( doc : DocAlike ) : Promise<string> {
         return this.last( doc, 1 );
     }
 
     // Return ID of the last document.
-    async last( doc  : { id : string }, takeNext = 0 ) : Promise<string>{
+    async last( doc  : DocAlike, takeNext = 0 ) : Promise<string>{
         const { type } = this;
 
         // Return existing id...

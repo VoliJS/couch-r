@@ -1,9 +1,9 @@
-import { promisifyAll, Document } from './common'
+import { promisifyAll } from './common'
 import { Query, QueryParts, index } from './queries'
 import { N1qlQuery } from 'couchbase'
 import { define, definitions, definitionDecorator, tools, mixinRules, MessengerDefinition, Messenger, IOEndpoint } from 'type-r'
 import { DocumentExtent, ExtentDefinition, IndexesSchema } from './extent'
-import { DocumentEndpoint } from './document'
+import { DocumentEndpoint, Document } from './document'
 
 const couchbaseErrors = require('couchbase/lib/errors');
 
