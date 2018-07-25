@@ -1,36 +1,10 @@
 import { promisify } from 'util'
-
 import { define, attr, Record, Messenger, value } from 'type-r'
+import { DocumentEndpoint } from './document';
 
 export function promisifyAll( obj : object, ...names : string[] ){
     for( let name of names ){
         obj[ name ] = promisify( obj[ name ] );
-    }
-}
-
-/**
- * Polymorphic record
- */
-@define
-export class Document extends Record {
-    @attr( value( void 0 ) )
-    _cas : any
-
-    /**
-     * Type is written by collection and never used there.
-     * Currently it's only reasonable usage is in mapReduce views
-     */
-    @attr( String )
-    _type : string
-
-    static id : any = String.value( null );
-
-    static get ref(){
-        return this.has
-            .toJSON( x => ( x && x.id ) || null )
-            .parse( x => {
-                return { id : x };
-            });
     }
 }
 

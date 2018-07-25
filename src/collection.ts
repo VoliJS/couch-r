@@ -3,7 +3,7 @@ import { base64, Document } from './common'
 import { Query, SelectQuery, select, QueryParts } from './queries'
 import { DocumentKey, DocumentId, DocumentKeySource } from './key'
 import { DocumentExtent, CouchbaseQuery } from './extent'
-import { DocumentEndpoint } from './endpoint';
+import { DocumentEndpoint } from './document';
 const couchbaseErrors = require('couchbase/lib/errors');
 
 @define

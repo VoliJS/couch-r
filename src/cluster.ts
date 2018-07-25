@@ -102,7 +102,7 @@ export class Cluster extends Messenger {
 interface ClusterOptions {
     connection : string
     authenticate : { username : string, password : string }
-    options : any
+    options? : any
     buckets : { [ name : string ] : Bucket }
 }
 

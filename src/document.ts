@@ -1,14 +1,35 @@
 import { define, IOEndpoint, definitionDecorator, mixinRules, Record, Collection, tools } from 'type-r'
-import { DocumentsCollection } from './collection'
 import { N1qlStringQuery, N1qlQuery} from 'couchbase'
 import { select, selectDocs, Query } from './queries'
 
 import { DocumentId, DocumentKey } from './key'
-import { Document } from './common'
 import { Messenger } from 'type-r';
 import { DocumentExtent } from './extent';
 
-const couchbaseErrors = require('couchbase/lib/errors');
+@define
+export class Document extends Record {
+    static endpoint : DocumentEndpoint
+
+    @attr( value( void 0 ) ) _cas : any
+
+    /**
+     * Type is written by collection and never used there.
+     * Currently it's only reasonable usage is in mapReduce views
+     */
+    @attr( String ) _type : string
+
+    // ?? Redundant, must be removed.
+    static id : any = String.value( null );
+
+    // "Reference to the document" attribute type, lazily loaded.
+    static get ref(){
+        return this.has
+            .toJSON( x => ( x && x.id ) || null )
+            .parse( x => {
+                return { id : x };
+            });
+    }
+}
 
 const defaultRecord = { idAttribute : 'id' };
 
@@ -48,7 +69,7 @@ interface ListOptions {
 @define
 export class DocumentEndpoint extends DocumentExtent implements IOEndpoint {
     bucket = null
-    key : DocumentKey<Document>
+    key : DocumentKey
 
     protected log( level, text ){
         tools.log( level, `[Couch-R] documents ${ this.key.type }: ${ text }`);
@@ -97,6 +118,12 @@ export class DocumentEndpoint extends DocumentExtent implements IOEndpoint {
     fetchPreviousOnUpdate: boolean
 
     async list( { filter = 'all', params = {} } : ListOptions, collection?: any ): Promise<JsonDocument[]> {
+        if( filter === 'pick' ){
+            const ids = params.ids.map( x => this.key.type + '#' + x );
+            this.api.getMulti( ids );
+            // TODO: implement multiget.
+        }
+
         if( !this.filters[ filter ] ) throw new ReferenceError( 'No such filter: ' + filter );
 
         const q = this[ filter ];

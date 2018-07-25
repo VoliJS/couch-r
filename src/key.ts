@@ -1,33 +1,31 @@
-import { base64, Document } from './common'
-import { tools } from 'type-r'
+import { base64 } from './common'
 
 const typeSeparator = '#',
       idSeparator = '~';
 
-export type KeyCode<D> = ( doc : Partial<D> ) => string[]
-export type KeyCounter<D> = ( doc : Partial<D> ) => string | string[]
-export type DocumentKeySource<D> = Partial<D> | string | number | Array<string | number>
+export type KeyCode = ( doc : object ) => string[]
+export type KeyCounter = ( doc : object ) => string | string[]
+export type DocumentKeySource = object | string | number | Array<string | number>
 
-export interface DocumentId<D>{
+export interface DocumentId{
     type : string
-    code? : KeyCode<D>
-
-    counter? : boolean | KeyCounter<D>
+    code? : KeyCode
+    counter? : boolean | KeyCounter
 }
 
-export class DocumentKey<D extends Document> implements DocumentId<D> {
+export class DocumentKey implements DocumentId {
     type : string
-    code : KeyCode<D>
+    code : KeyCode
 
-    counter : boolean | KeyCounter<D>
+    counter : boolean | KeyCounter
     
-    constructor({ type, code, counter } : DocumentId<D>, public collection ){
+    constructor({ type, code, counter } : DocumentId, public collection ){
         this.type = type;
         this.code = code || null;
         this.counter = counter === void 0 || counter === true ? this.defaultCounter : counter;
     }
 
-    defaultCounter( doc : Partial<D> ) : string {
+    defaultCounter( doc : object ) : string {
         // By default there is the separate counter for each `type#code`
         return this.get( doc, true );
     }
@@ -38,7 +36,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
         return byType[ byType.length - 1 ].split( idSeparator );
     }
 
-    getCounterId( doc : Partial<D> ) : string {
+    getCounterId( doc : object ) : string {
         // All counter ids starts with typeSeparator. #...
         if ( typeof this.counter === 'function' ) {
             const id = this.counter( doc )
@@ -51,7 +49,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
     /**
      * counterValue( doc, code ) - take the next counter value
      */
-    private async getCounterValue( doc : Partial<D>, next : number ) : Promise<string> {
+    private async getCounterValue( doc : object, next : number ) : Promise<string> {
         const counterId = this.getCounterId( doc );
 
         if( counterId ){
@@ -65,12 +63,12 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
         return null;
     }
 
-    async make( doc : Partial<D> ) : Promise<string> {
+    async make( doc : { id : string } ) : Promise<string> {
         return this.last( doc, 1 );
     }
 
     // Return ID of the last document.
-    async last( doc  : Partial<D>, takeNext = 0 ) : Promise<string>{
+    async last( doc  : { id : string }, takeNext = 0 ) : Promise<string>{
         const { type } = this;
 
         // Return existing id...
@@ -93,7 +91,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
      * get( existingDocument )
      * get( newDocument )
      */
-    get( doc : DocumentKeySource<D>, ignoreErrors? : true ) : string {
+    get( doc : DocumentKeySource, ignoreErrors? : true ) : string {
         const { type } = this;
 
         // Convert to full id.
@@ -111,7 +109,7 @@ export class DocumentKey<D extends Document> implements DocumentId<D> {
         return this.fromShort( this.code ? this.code( doc ).join( idSeparator ) : '' );
     }
 
-    getShort( doc : DocumentKeySource<D> ) : string {
+    getShort( doc : DocumentKeySource ) : string {
         return this.toShort( this.get( doc ) );
     }
 

@@ -9,7 +9,7 @@ export interface IndexesSchema {
 export type CouchbaseQuery = N1qlQuery | N1qlStringQuery | ViewQuery;
 
 export interface ExtentDefinition {
-    queries : Queries
+    queries? : Queries
 }
 
 interface Queries {
@@ -18,9 +18,9 @@ interface Queries {
 
 @define
 export abstract class DocumentExtent extends Messenger {
-    constructor( options : ExtentDefinition ){
+    constructor( { queries } : ExtentDefinition ){
         super();
-        tools.defaults( this, options );
+        this.queries = queries;
     }
 
     queries : Queries
@@ -48,10 +48,10 @@ export abstract class DocumentExtent extends Messenger {
 
     abstract getDesignDocKey( viewName : string )
 
-
     async onConnect( initialize: boolean ) {
         for( let name in this.queries ){
             const q = this.queries[ name ];
+
             // Connect query to the extent.
             const query = this.queries[ name ] = q.bind( this, name );
 

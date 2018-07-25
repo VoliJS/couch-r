@@ -3,7 +3,7 @@ import { Query, QueryParts, index } from './queries'
 import { N1qlQuery } from 'couchbase'
 import { define, definitions, definitionDecorator, tools, mixinRules, MessengerDefinition, Messenger, IOEndpoint } from 'type-r'
 import { DocumentExtent, ExtentDefinition, IndexesSchema } from './extent'
-import { DocumentsCollection } from './collection'
+import { DocumentEndpoint } from './document'
 
 const couchbaseErrors = require('couchbase/lib/errors');
 
@@ -13,9 +13,9 @@ export interface BucketDefinition extends ExtentDefinition {
 
 @define
 export class Bucket extends DocumentExtent {
-    private endpoints : IOEndpoint[]
+    private endpoints : DocumentEndpoint[]
 
-    constructor( options ){
+    constructor( options : BucketDefinition ){
         super( options );
         this.queries.ix_collection_type = index( '_type' );
         this.endpoints = Object.keys( options.documents ).map( x => options.documents[ x ].endpoint );
@@ -118,4 +118,8 @@ export class Bucket extends DocumentExtent {
         
         return schema.indexes;
     }
+}
+
+export function bucket<T extends BucketDefinition>( options : T ) : Bucket & T {
+    return new Bucket( options ) as any;
 }
