@@ -4,7 +4,7 @@ import { userInfo } from 'os';
 
 @define
 class User extends Record {
-    static endpoint = documentIO();
+    static endpoint = documentIO(); // autoincrement
 
     @attr name : string
     @attr email : string
@@ -18,7 +18,7 @@ class Post extends Document {
         },
 
         filters : {
-            paged : select( Document )
+            paged : select.docs()
                 .order_by( 'createdAt DESC' )
                 .limit( '$size' )
                 .offset( '$page * $size' )
@@ -38,7 +38,7 @@ class DocumentPage extends Store {
 
     async fetch({ params }){
         this.page = params.page;
-        
+
         await this.posts.fetch({
             filter : 'paged',
             params
